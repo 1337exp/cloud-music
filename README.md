@@ -1,6 +1,6 @@
 # Облако Музыки
 
-Локальный музыкальный сервер: **Vue 3 + TypeScript** на клиенте, **Bun + TypeScript** на сервере, **SQLite** и **JWT**. UI собран на `@1337exp/taoui`.
+Локальный музыкальный сервер: **Vue 3 + TypeScript** на клиенте, **Bun + TypeScript** на сервере, **SQLite** и **JWT**. UI собран на `@1337exp/taoui`. Репозиторий: [1337exp/cloud-music](https://github.com/1337exp/cloud-music).
 
 ```
 src/
