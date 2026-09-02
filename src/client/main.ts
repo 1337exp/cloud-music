@@ -1,0 +1,20 @@
+import { createApp, type Plugin } from 'vue';
+import { createPinia } from 'pinia';
+import TaoUI from '@1337exp/taoui';
+import '@1337exp/taoui/styles.css';
+import '@fontsource/roboto/cyrillic-400.css';
+import '@fontsource/roboto/cyrillic-500.css';
+import '@fontsource/roboto/cyrillic-700.css';
+import '@fontsource/roboto/latin-400.css';
+import '@fontsource/roboto/latin-500.css';
+import '@fontsource/roboto/latin-700.css';
+import App from './App.vue';
+import { router } from './router';
+import './theme.css';
+import './app.css';
+
+const app = createApp(App);
+app.use(createPinia());
+app.use(router);
+app.use(TaoUI as Plugin);
+app.mount('#app');

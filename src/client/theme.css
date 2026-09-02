@@ -1,0 +1,54 @@
+[data-tao-theme='music'] {
+  color-scheme: dark;
+
+  --tao-color-accent: #ffdb4d;
+  --tao-color-accent-hover: #ffe066;
+  --tao-color-accent-active: #f0c933;
+  --tao-color-accent-subtle: color-mix(in srgb, var(--tao-color-accent) 12%, transparent);
+  --tao-color-accent-subtle-hover: color-mix(in srgb, var(--tao-color-accent) 18%, transparent);
+  --tao-color-on-accent: #161616;
+  --tao-color-text-on-accent: var(--tao-color-on-accent);
+  --tao-color-selection: var(--tao-color-accent);
+  --tao-color-selection-text: var(--tao-color-on-accent);
+
+  --tao-color-bg: #0b0b0b;
+  --tao-color-surface: #0b0b0b;
+  --tao-color-surface-raised: #161616;
+  --tao-color-surface-sunken: #101010;
+  --tao-color-surface-hover: #222222;
+
+  --tao-color-border: rgba(255, 255, 255, 0.08);
+  --tao-color-border-strong: rgba(255, 255, 255, 0.16);
+
+  --tao-color-text: #d6d6d6;
+  --tao-color-text-strong: #ffffff;
+  --tao-color-text-muted: #8d8d8d;
+  --tao-color-text-disabled: #5c5c5c;
+
+  --tao-color-link: var(--tao-color-accent);
+  --tao-color-link-hover: var(--tao-color-accent-hover);
+
+  --tao-color-input-bg: #141414;
+  --tao-color-input-text: #f2f2f2;
+  --tao-color-input-placeholder: #7a7a7a;
+
+  --tao-color-overlay: rgba(0, 0, 0, 0.72);
+
+  --tao-font-family-base: 'Roboto', system-ui, sans-serif;
+  --tao-font-family: var(--tao-font-family-base);
+
+  --player-height: 76px;
+  --sidebar-width: 232px;
+  --nav-height: 0px;
+}
+
+@media (max-width: 800px) {
+  [data-tao-theme='music'] {
+    --player-height: 64px;
+    --nav-height: 56px;
+  }
+}
+
+[data-tao-theme='music'] .tao-tag {
+  font-size: 12px;
+}

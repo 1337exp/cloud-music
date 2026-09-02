@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "jsx": "preserve",
+    "skipLibCheck": true,
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["vite/client", "vite-plugin-pwa/client"],
+    "paths": {
+      "@shared/*": ["../shared/*"],
+      "vue": ["../../node_modules/vue"]
+    }
+  },
+  "include": ["./**/*.ts", "./**/*.vue", "../shared/**/*.ts"]
+}
