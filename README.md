@@ -25,8 +25,6 @@ bun run dev
 Клиент: http://127.0.0.1:5173  
 API: http://127.0.0.1:8787
 
-После `bun install` библиотека UI подключается из `E:\job\git\taoui`. Если Windows не даёт скопировать `file:`-пакет, скрипт `postinstall` делает junction в `node_modules`.
-
 Прод (после сборки клиент отдаёт сам Bun):
 
 ```bash

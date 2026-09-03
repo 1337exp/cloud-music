@@ -59,10 +59,7 @@ export default defineConfig({
       },
     },
     fs: {
-      allow: [
-        fileURLToPath(new URL('../..', import.meta.url)),
-        fileURLToPath(new URL('../../../../git/taoui', import.meta.url)),
-      ],
+      allow: [fileURLToPath(new URL('../..', import.meta.url))],
     },
   },
   build: {

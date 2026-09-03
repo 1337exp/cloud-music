@@ -16,11 +16,10 @@
     "start": "bun src/server/index.ts",
     "user:create": "bun src/tools/create-user.ts",
     "reindex": "bun src/tools/reindex.ts",
-    "typecheck": "vue-tsc --noEmit -p src/client/tsconfig.json && tsc --noEmit -p tsconfig.json",
-    "postinstall": "bun src/tools/link-ui.ts"
+    "typecheck": "vue-tsc --noEmit -p src/client/tsconfig.json && tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@1337exp/taoui": "file:../../git/taoui",
+    "@1337exp/taoui": "1.7.0",
     "@fontsource/roboto": "^5.3.0",
     "hono": "^4.9.6",
     "jose": "^6.0.12",
