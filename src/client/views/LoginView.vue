@@ -3,7 +3,9 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { TaoButton, TaoCard, TaoFormField, TaoInput, toast } from '@1337exp/taoui';
 import { ApiError } from '../http';
+import { t } from '../i18n';
 import { useAuthStore } from '../stores/auth';
+import LangSwitch from '../components/LangSwitch.vue';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -19,8 +21,8 @@ async function submit() {
     await auth.login(username.value, password.value);
     await router.push({ name: 'library' });
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : 'Не удалось войти';
-    toast().error().message(error.value);
+    error.value = err instanceof ApiError ? err.message : t('login.failed');
+    toast().danger().message(error.value);
   } finally {
     loading.value = false;
   }
@@ -29,23 +31,24 @@ async function submit() {
 
 <template>
   <div class="login">
+    <LangSwitch class="lang" />
     <div class="panel">
-      <TaoCard :padding="28" :radius="16">
+      <TaoCard :padding="28">
         <form class="form" @submit.prevent="submit">
           <div class="hero">
             <span class="mark" aria-hidden="true"></span>
-            <h1>Облако Музыки</h1>
-            <p>Там, где музыка. Войдите, чтобы слушать.</p>
+            <h1>{{ t('login.title') }}</h1>
+            <p>{{ t('login.subtitle') }}</p>
           </div>
-          <TaoFormField label="Логин" :error="error && !username ? error : ''">
+          <TaoFormField :label="t('login.username')" :error="error && !username ? error : ''">
             <TaoInput v-model="username" autocomplete="username" />
           </TaoFormField>
-          <TaoFormField label="Пароль">
+          <TaoFormField :label="t('login.password')">
             <TaoInput v-model="password" type="password" autocomplete="current-password" />
           </TaoFormField>
           <p v-if="error" class="err">{{ error }}</p>
           <div class="actions">
-            <TaoButton type="submit" :loading="loading">Войти</TaoButton>
+            <TaoButton type="submit" :loading="loading">{{ t('login.submit') }}</TaoButton>
           </div>
         </form>
       </TaoCard>
@@ -55,6 +58,7 @@ async function submit() {
 
 <style scoped>
 .login {
+  position: relative;
   min-height: 100vh;
   display: grid;
   place-items: center;
@@ -66,6 +70,12 @@ async function submit() {
 
 .panel {
   width: min(420px, 100%);
+}
+
+.lang {
+  position: absolute;
+  top: 16px;
+  right: 16px;
 }
 
 .form {

@@ -3,6 +3,7 @@ import { ref, watch } from 'vue';
 import { TaoButton, TaoFormField, TaoInput, TaoInputNumber, TaoModal, TaoTag, toast } from '@1337exp/taoui';
 import type { Tag, Track } from '@shared/types';
 import { api } from '../http';
+import { t } from '../i18n';
 
 const props = defineProps<{
   track: Track | null;
@@ -59,9 +60,9 @@ async function save() {
     });
     emit('saved', data.track);
     open.value = false;
-    toast().success().message('Трек обновлён');
+    toast().success().message(t('edit.saved'));
   } catch (error) {
-    toast().error().message(error instanceof Error ? error.message : 'Не удалось сохранить');
+    toast().danger().message(error instanceof Error ? error.message : t('edit.failed'));
   } finally {
     saving.value = false;
   }
@@ -69,35 +70,35 @@ async function save() {
 </script>
 
 <template>
-  <TaoModal v-model="open" title="Редактирование трека">
+  <TaoModal v-model="open" :title="t('edit.title')">
     <form class="form" @submit.prevent="save">
-      <TaoFormField label="Название">
+      <TaoFormField :label="t('edit.name')">
         <TaoInput v-model="title" />
       </TaoFormField>
-      <TaoFormField label="Исполнитель">
+      <TaoFormField :label="t('edit.artist')">
         <TaoInput v-model="artist" />
       </TaoFormField>
-      <TaoFormField label="Альбом">
+      <TaoFormField :label="t('edit.album')">
         <TaoInput v-model="album" />
       </TaoFormField>
-      <TaoFormField label="Год" hint="Необязательно">
+      <TaoFormField :label="t('edit.year')" :hint="t('edit.optional')">
         <TaoInputNumber v-model="year" :min="1900" :max="2100" />
       </TaoFormField>
-      <TaoFormField label="Теги" hint="Жанр и любые пометки. Enter — добавить">
-        <TaoInput v-model="tagDraft" placeholder="Например: jazz" @keydown.enter.prevent="addTag" />
+      <TaoFormField :label="t('edit.tags')" :hint="t('edit.tagsHint')">
+        <TaoInput v-model="tagDraft" :placeholder="t('edit.tagPlaceholder')" @keydown.enter.prevent="addTag" />
       </TaoFormField>
       <div class="tags">
         <TaoTag
           v-for="(tag, index) in tags"
           :key="tag"
-          type="info"
-          pointer
+          tone="info"
+          clickable
           @click="tags.splice(index, 1)"
         >
           {{ tag }} ×
         </TaoTag>
       </div>
-      <TaoButton type="submit" :loading="saving" block>Сохранить</TaoButton>
+      <TaoButton type="submit" :loading="saving" block>{{ t('edit.save') }}</TaoButton>
     </form>
   </TaoModal>
 </template>

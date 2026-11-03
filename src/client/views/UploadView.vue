@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { TaoAlert, TaoButton, TaoFileDrop, TaoProgress, toast } from '@1337exp/taoui';
 import type { Track, UploadResult } from '@shared/types';
 import { api } from '../http';
+import { t } from '../i18n';
 
 const files = ref<File[]>([]);
 const uploading = ref(false);
@@ -47,13 +48,13 @@ async function upload() {
     } else if (ok && result.failed.length) {
       toast()
         .warning()
-        .message(`${successMessage(added, reused)}. Не удалось: ${result.failed.length}`);
+        .message(t('upload.partial', { message: successMessage(added, reused), failed: result.failed.length }));
     } else if (result.failed.length) {
-      toast().error().message(`Ошибки: ${result.failed.length}`);
+      toast().danger().message(t('upload.errors', { n: result.failed.length }));
     }
     files.value = [];
   } catch (error) {
-    toast().error().message(error instanceof Error ? error.message : 'Не удалось загрузить');
+    toast().danger().message(error instanceof Error ? error.message : t('upload.failed'));
   } finally {
     uploading.value = false;
   }
@@ -65,14 +66,12 @@ function trackLabel(track: Track): string {
 
 function successMessage(added: number, reused: number): string {
   if (added && reused) {
-    return `Добавлено: ${added}. Ещё ${reused} уже были — используем их`;
+    return t('upload.addedAndReused', { added, reused });
   }
   if (reused && !added) {
-    return reused === 1
-      ? 'Файл уже в библиотеке — используем существующий трек'
-      : `Файлы уже в библиотеке — используем существующие (${reused})`;
+    return reused === 1 ? t('upload.reusedOne') : t('upload.reusedMany', { n: reused });
   }
-  return added === 1 ? 'Добавлено в библиотеку' : `Добавлено в библиотеку: ${added}`;
+  return added === 1 ? t('upload.addedOne') : t('upload.addedMany', { n: added });
 }
 </script>
 
@@ -80,7 +79,7 @@ function successMessage(added: number, reused: number): string {
   <div class="page">
     <div class="page-head">
       <div>
-        <h1>Загрузка</h1>
+        <h1>{{ t('upload.title') }}</h1>
       </div>
     </div>
 
@@ -96,20 +95,20 @@ function successMessage(added: number, reused: number): string {
 
     <div class="actions">
       <TaoButton :disabled="!files.length" :loading="uploading" @click="upload">
-        Загрузить {{ files.length ? `(${files.length})` : '' }}
+        {{ t('upload.button') }} {{ files.length ? `(${files.length})` : '' }}
       </TaoButton>
     </div>
 
     <TaoProgress v-if="uploading || progress === 100" :progress="progress" />
 
     <div v-if="summary" class="report">
-      <TaoAlert v-if="summary.added.length" type="success" title="Добавлены">
+      <TaoAlert v-if="summary.added.length" tone="success" :title="t('upload.added')">
         {{ summary.added.map(trackLabel).join(', ') }}
       </TaoAlert>
-      <TaoAlert v-if="summary.duplicates.length" type="success" title="Уже в библиотеке — используем существующий файл">
+      <TaoAlert v-if="summary.duplicates.length" tone="success" :title="t('upload.duplicates')">
         {{ summary.duplicates.map((item) => trackLabel(item.track)).join(', ') }}
       </TaoAlert>
-      <TaoAlert v-if="summary.failed.length" type="error" title="Не загрузились">
+      <TaoAlert v-if="summary.failed.length" tone="danger" :title="t('upload.failedTitle')">
         {{ summary.failed.map((item) => `${item.fileName}: ${item.message}`).join('; ') }}
       </TaoAlert>
     </div>

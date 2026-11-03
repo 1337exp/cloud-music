@@ -21,7 +21,7 @@ defineProps<{
 .cover {
   display: block;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: var(--tao-radius-sm);
   background: #1a1a1a;
   flex-shrink: 0;
 }

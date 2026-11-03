@@ -9,6 +9,7 @@ import type { Role, UserPublic } from '../shared/types';
 import { JWT_SECRET_FILE, ensureDataDirs } from './config';
 import { getDb, nowSeconds } from './db';
 import type { UserRow } from './models';
+import { fail } from './messages';
 
 export type AppVars = {
   Variables: {
@@ -83,7 +84,7 @@ export function clearSessionCookie(c: Context): void {
 export const requireAuth: MiddlewareHandler<AppVars> = async (c, next) => {
   const token = getCookie(c, SESSION_COOKIE);
   if (!token) {
-    return c.json({ error: 'unauthorized', message: 'Нужна авторизация' }, 401);
+    return fail(c, 401, 'unauthorized', 'needAuth');
   }
 
   try {
@@ -94,21 +95,21 @@ export const requireAuth: MiddlewareHandler<AppVars> = async (c, next) => {
 
     if (!row) {
       clearSessionCookie(c);
-      return c.json({ error: 'unauthorized', message: 'Нужна авторизация' }, 401);
+      return fail(c, 401, 'unauthorized', 'needAuth');
     }
 
     c.set('user', { id: row.id, username: row.username, role: row.role });
     await next();
   } catch {
     clearSessionCookie(c);
-    return c.json({ error: 'unauthorized', message: 'Нужна авторизация' }, 401);
+    return fail(c, 401, 'unauthorized', 'needAuth');
   }
 };
 
 export const requireEditor: MiddlewareHandler<AppVars> = async (c, next) => {
   const user = c.get('user');
   if (!canEditLibrary(user.role)) {
-    return c.json({ error: 'forbidden', message: 'Недостаточно прав' }, 403);
+    return fail(c, 403, 'forbidden', 'forbidden');
   }
   await next();
 };

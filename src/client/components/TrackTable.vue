@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { TaoDropdownMenu, TaoEmpty, TaoTag } from '@1337exp/taoui';
-import type { TaoDropdownAction } from '@1337exp/taoui';
+import type { TaoMenuItem } from '@1337exp/taoui';
 import { formatDuration } from '@shared/format';
 import type { Track } from '@shared/types';
+import { t } from '../i18n';
 import { useAuthStore } from '../stores/auth';
-import { usePlayerStore } from '../stores/player';
+import { usePlayerStore, type CollectionQuery } from '../stores/player';
 import CoverArt from './CoverArt.vue';
 
 const props = defineProps<{
@@ -14,6 +15,8 @@ const props = defineProps<{
   emptyText?: string;
   removable?: boolean;
   reorderable?: boolean;
+  /** The list is a page of the library: playback continues through the whole collection, not only this page. */
+  collection?: CollectionQuery;
 }>();
 
 const emit = defineEmits<{
@@ -66,14 +69,14 @@ onUnmounted(() => {
   finishDrag(false);
 });
 
-const actions = computed((): TaoDropdownAction[] => {
-  const list: TaoDropdownAction[] = [{ id: 'playlist', name: 'В плейлист' }];
+const actions = computed((): TaoMenuItem[] => {
+  const list: TaoMenuItem[] = [{ id: 'playlist', label: t('table.toPlaylist') }];
   if (auth.isEditor) {
-    list.push({ id: 'edit', name: 'Изменить' });
-    list.push({ id: 'delete', name: 'Удалить из библиотеки' });
+    list.push({ id: 'edit', label: t('table.edit') });
+    list.push({ id: 'delete', label: t('table.delete') });
   }
   if (props.removable) {
-    list.push({ id: 'remove', name: 'Убрать из плейлиста' });
+    list.push({ id: 'remove', label: t('table.removeFromPlaylist') });
   }
   return list;
 });
@@ -304,13 +307,17 @@ function onRowClick(track: Track): void {
     moved = false;
     return;
   }
-  void player.playTrack(track, shown.value);
+  if (props.collection) {
+    void player.playCollection(track, props.collection, shown.value);
+  } else {
+    void player.playList(shown.value, shown.value.indexOf(track));
+  }
 }
 </script>
 
 <template>
-  <TaoEmpty v-if="!tracks.length" :title="emptyTitle ?? 'Пока тихо'">
-    {{ emptyText ?? 'Здесь появятся треки, когда библиотека наполнится.' }}
+  <TaoEmpty v-if="!tracks.length" :title="emptyTitle ?? t('table.emptyTitle')">
+    {{ emptyText ?? t('table.emptyText') }}
   </TaoEmpty>
 
   <div
@@ -324,10 +331,10 @@ function onRowClick(track: Track): void {
     <div class="head" role="row">
       <span v-if="reorderable" class="grip-col"></span>
       <span>#</span>
-      <span>Трек</span>
-      <span class="hide-sm">Альбом</span>
-      <span class="hide-sm">Теги</span>
-      <span>Время</span>
+      <span>{{ t('table.track') }}</span>
+      <span class="hide-sm">{{ t('table.album') }}</span>
+      <span class="hide-sm">{{ t('table.tags') }}</span>
+      <span>{{ t('table.time') }}</span>
       <span></span>
     </div>
     <div
@@ -348,7 +355,7 @@ function onRowClick(track: Track): void {
         v-if="reorderable"
         class="handle"
         role="button"
-        aria-label="Перетащить"
+        :aria-label="t('table.drag')"
         @click.stop
       >
         <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -360,7 +367,7 @@ function onRowClick(track: Track): void {
           <circle cx="11" cy="13" r="1.3" fill="currentColor" />
         </svg>
       </div>
-      <button type="button" class="num" :aria-label="`Играть ${track.title}`" @click.stop="onRowClick(track)">
+      <button type="button" class="num" :aria-label="t('table.playTrack', { title: track.title })" @click.stop="onRowClick(track)">
         <span class="index">{{ i + 1 }}</span>
         <span class="play-icon">
           <svg viewBox="0 0 24 24" width="14" height="14">
@@ -372,16 +379,16 @@ function onRowClick(track: Track): void {
         <CoverArt :track="track" />
         <span class="names">
           <strong>{{ track.title }}</strong>
-          <small>{{ track.artist || 'Неизвестный исполнитель' }}</small>
+          <small>{{ track.artist || t('common.unknownArtist') }}</small>
         </span>
       </span>
       <span class="hide-sm album">{{ track.album || '—' }}</span>
       <span class="hide-sm tags">
-        <TaoTag v-for="tag in track.tags" :key="tag.id" type="neutral">{{ tag.name }}</TaoTag>
+        <TaoTag v-for="tag in track.tags" :key="tag.id" tone="neutral">{{ tag.name }}</TaoTag>
       </span>
       <span class="time">{{ formatDuration(track.durationMs) }}</span>
       <span class="menu" @click.stop>
-        <TaoDropdownMenu :actions="actions" @selected="(id) => onSelected(id, track)" />
+        <TaoDropdownMenu :items="actions" @select="(id) => onSelected(String(id), track)" />
       </span>
     </div>
   </div>
@@ -417,7 +424,7 @@ function onRowClick(track: Track): void {
 }
 
 .row {
-  border-radius: 8px;
+  border-radius: var(--tao-radius-md);
 }
 
 .row:hover,
@@ -450,7 +457,7 @@ function onRowClick(track: Track): void {
   height: 36px;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--tao-radius-md);
   background: transparent;
   color: var(--tao-color-text-muted);
   cursor: grab;

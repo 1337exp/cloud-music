@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { TaoSlider, TaoTooltip } from '@1337exp/taoui';
 import { formatClock } from '@shared/format';
+import { t } from '../i18n';
 import { usePlayerStore } from '../stores/player';
 import CoverArt from './CoverArt.vue';
 
@@ -19,10 +20,12 @@ const volume = computed({
 });
 
 const repeatTitle = computed(() => {
-  if (player.repeat === 'all') return 'Повтор всего';
-  if (player.repeat === 'one') return 'Повтор трека';
-  return 'Повтор выключен';
+  if (player.repeat === 'all') return t('player.repeatAll');
+  if (player.repeat === 'one') return t('player.repeatOne');
+  return t('player.repeatOff');
 });
+
+const shuffleTitle = computed(() => (player.shuffle ? t('player.shuffleOn') : t('player.shuffleOff')));
 
 const progressPercent = computed(() => {
   if (!player.duration) return 0;
@@ -91,25 +94,25 @@ onUnmounted(() => {
       <span :style="{ width: `${progressPercent}%` }"></span>
     </div>
 
-    <button v-if="expanded" type="button" class="collapse" @click="collapse">Свернуть</button>
+    <button v-if="expanded" type="button" class="collapse" @click="collapse">{{ t('player.collapse') }}</button>
 
     <div class="now" @click="onNowClick">
       <template v-if="player.current">
         <CoverArt :track="player.current" :size="expanded ? 160 : 52" />
         <div class="meta">
           <strong>{{ player.current.title }}</strong>
-          <span>{{ player.current.artist || 'Неизвестный исполнитель' }}</span>
+          <span>{{ player.current.artist || t('common.unknownArtist') }}</span>
         </div>
       </template>
       <div v-else class="meta muted">
-        <strong>Ничего не играет</strong>
-        <span>Выберите трек из коллекции</span>
+        <strong>{{ t('player.idleTitle') }}</strong>
+        <span>{{ t('player.idleHint') }}</span>
       </div>
       <button
         type="button"
         class="play play--mini"
         :disabled="!player.hasTrack"
-        :aria-label="player.playing ? 'Пауза' : 'Играть'"
+        :aria-label="player.playing ? t('player.pause') : t('player.play')"
         @click.stop="player.toggle()"
       >
         <svg v-if="player.playing" viewBox="0 0 24 24" width="20" height="20">
@@ -123,7 +126,7 @@ onUnmounted(() => {
 
     <div class="transport">
       <div class="controls">
-        <button type="button" class="icon-btn" :disabled="!player.hasTrack" aria-label="Предыдущий" @click="player.prev()">
+        <button type="button" class="icon-btn" :disabled="!player.hasTrack" :aria-label="t('player.prev')" @click="player.prev()">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
             <path fill="currentColor" d="M6 6h2v12H6V6zm3.5 6 8.5 6V6l-8.5 6z" />
           </svg>
@@ -132,7 +135,7 @@ onUnmounted(() => {
           type="button"
           class="play"
           :disabled="!player.hasTrack"
-          :aria-label="player.playing ? 'Пауза' : 'Играть'"
+          :aria-label="player.playing ? t('player.pause') : t('player.play')"
           @click="player.toggle()"
         >
           <svg v-if="player.playing" viewBox="0 0 24 24" width="20" height="20">
@@ -142,7 +145,7 @@ onUnmounted(() => {
             <path fill="currentColor" d="M8 5v14l11-7L8 5z" />
           </svg>
         </button>
-        <button type="button" class="icon-btn" :disabled="!player.hasTrack" aria-label="Следующий" @click="player.next()">
+        <button type="button" class="icon-btn" :disabled="!player.hasTrack" :aria-label="t('player.next')" @click="player.next()">
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path fill="currentColor" d="M16 6h2v12h-2V6zM6 18l8.5-6L6 6v12z" />
           </svg>
@@ -152,7 +155,7 @@ onUnmounted(() => {
         <span>{{ formatClock(player.currentTime) }}</span>
         <TaoSlider
           v-model="progress"
-          size="small"
+          variant="thin"
           :min="0"
           :max="Math.max(player.duration, 0.1)"
           :step="0.1"
@@ -167,6 +170,7 @@ onUnmounted(() => {
         <button
           type="button"
           class="icon-btn"
+          :aria-label="repeatTitle"
           :class="{ 'is-on': player.repeat !== 'off' }"
           @click="player.cycleRepeat()"
         >
@@ -179,8 +183,14 @@ onUnmounted(() => {
           </svg>
         </button>
       </TaoTooltip>
-      <TaoTooltip :content="player.shuffle ? 'Перемешивание включено' : 'Перемешать'">
-        <button type="button" class="icon-btn" :class="{ 'is-on': player.shuffle }" @click="player.shuffle = !player.shuffle">
+      <TaoTooltip :content="shuffleTitle">
+        <button
+          type="button"
+          class="icon-btn"
+          :aria-label="shuffleTitle"
+          :class="{ 'is-on': player.shuffle }"
+          @click="player.toggleShuffle()"
+        >
           <svg viewBox="0 0 24 24" width="16" height="16">
             <path
               fill="currentColor"
@@ -189,7 +199,7 @@ onUnmounted(() => {
           </svg>
         </button>
       </TaoTooltip>
-      <button type="button" class="icon-btn" :aria-label="player.muted ? 'Включить звук' : 'Выключить звук'" @click="player.toggleMute()">
+      <button type="button" class="icon-btn" :aria-label="player.muted ? t('player.unmute') : t('player.mute')" @click="player.toggleMute()">
         <svg viewBox="0 0 24 24" width="16" height="16">
           <path
             fill="currentColor"
@@ -200,7 +210,7 @@ onUnmounted(() => {
         </svg>
       </button>
       <div class="vol">
-        <TaoSlider v-model="volume" size="small" :min="0" :max="100" :step="1" />
+        <TaoSlider v-model="volume" variant="thin" :min="0" :max="100" :step="1" />
       </div>
     </div>
   </footer>
@@ -292,7 +302,7 @@ onUnmounted(() => {
 .icon-btn {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--tao-radius-md);
 }
 
 .icon-btn:hover,

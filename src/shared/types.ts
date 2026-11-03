@@ -34,6 +34,10 @@ export interface TrackListResponse {
   pageSize: number;
 }
 
+export interface TrackIdsResponse {
+  ids: number[];
+}
+
 export interface PlaylistSummary {
   id: number;
   title: string;

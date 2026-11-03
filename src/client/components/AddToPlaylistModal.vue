@@ -4,6 +4,7 @@ import { TaoButton, TaoFormField, TaoInput, TaoModal, TaoSelect, toast } from '@
 import type { PlaylistSummary, Track } from '@shared/types';
 import { MAX_PLAYLISTS_PER_USER } from '@shared/constants';
 import { api } from '../http';
+import { t } from '../i18n';
 
 const props = defineProps<{
   track: Track | null;
@@ -38,7 +39,7 @@ async function add() {
     if (!id) {
       const title = newTitle.value.trim();
       if (!title) {
-        toast().warning().message('Создайте плейлист или выберите существующий');
+        toast().warning().message(t('addToPlaylist.needPlaylist'));
         saving.value = false;
         return;
       }
@@ -53,11 +54,11 @@ async function add() {
       method: 'POST',
       body: JSON.stringify({ trackId: props.track.id }),
     });
-    toast().success().message('Добавлено в плейлист');
+    toast().success().message(t('addToPlaylist.done'));
     open.value = false;
     newTitle.value = '';
   } catch (error) {
-    toast().error().message(error instanceof Error ? error.message : 'Не удалось добавить');
+    toast().danger().message(error instanceof Error ? error.message : t('addToPlaylist.failed'));
   } finally {
     saving.value = false;
   }
@@ -65,9 +66,9 @@ async function add() {
 </script>
 
 <template>
-  <TaoModal v-model="open" title="Добавить в плейлист">
+  <TaoModal v-model="open" :title="t('addToPlaylist.title')">
     <form class="form" @submit.prevent="add">
-      <TaoFormField v-if="playlists.length" label="Плейлист">
+      <TaoFormField v-if="playlists.length" :label="t('addToPlaylist.playlist')">
         <TaoSelect
           v-model="playlistId"
           :options="playlists.map((item) => ({ value: item.id, label: `${item.title} (${item.trackCount})` }))"
@@ -75,11 +76,11 @@ async function add() {
       </TaoFormField>
       <TaoFormField
         v-if="playlists.length < MAX_PLAYLISTS_PER_USER"
-        :label="playlists.length ? 'Или новый' : 'Название'"
+        :label="playlists.length ? t('addToPlaylist.orNew') : t('addToPlaylist.name')"
       >
-        <TaoInput v-model="newTitle" placeholder="Вечерний микс" @focus="playlistId = null" />
+        <TaoInput v-model="newTitle" :placeholder="t('addToPlaylist.placeholder')" @focus="playlistId = null" />
       </TaoFormField>
-      <TaoButton type="submit" :loading="saving" block>Добавить</TaoButton>
+      <TaoButton type="submit" :loading="saving" block>{{ t('addToPlaylist.submit') }}</TaoButton>
     </form>
   </TaoModal>
 </template>

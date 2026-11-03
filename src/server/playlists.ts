@@ -3,6 +3,7 @@ import type { PlaylistDetail, PlaylistSummary, Track } from '../shared/types';
 import { getDb, nowSeconds } from './db';
 import type { TrackRow } from './models';
 import { hydrateTracks } from './tracks';
+import { AppError } from './messages';
 
 interface PlaylistRow {
   id: number;
@@ -75,13 +76,13 @@ export function getPlaylistDetail(userId: number, playlistId: number): PlaylistD
 export function createPlaylist(userId: number, title: string): PlaylistSummary {
   const name = title.trim();
   if (!name) {
-    throw new Error('Название плейлиста не может быть пустым');
+    throw new AppError('playlistTitleEmpty');
   }
 
   const db = getDb();
   const count = db.query('SELECT COUNT(*) as n FROM playlists WHERE user_id = ?').get(userId) as { n: number };
   if (count.n >= MAX_PLAYLISTS_PER_USER) {
-    throw new Error(`Можно создать не больше ${MAX_PLAYLISTS_PER_USER} плейлистов`);
+    throw new AppError('playlistLimit', { n: MAX_PLAYLISTS_PER_USER });
   }
 
   const ts = nowSeconds();
@@ -109,7 +110,7 @@ export function renamePlaylist(userId: number, playlistId: number, title: string
 
   const name = title.trim();
   if (!name) {
-    throw new Error('Название плейлиста не может быть пустым');
+    throw new AppError('playlistTitleEmpty');
   }
 
   const ts = nowSeconds();
@@ -141,7 +142,7 @@ export function addTrackToPlaylist(userId: number, playlistId: number, trackId: 
   const db = getDb();
   const exists = db.query('SELECT 1 FROM tracks WHERE id = ?').get(trackId);
   if (!exists) {
-    throw new Error('Трек не найден');
+    throw new AppError('trackNotFound');
   }
 
   const already = db
@@ -192,7 +193,7 @@ export function reorderPlaylistTracks(userId: number, playlistId: number, trackI
     currentIds.some((id, i) => id !== nextIds[i]) ||
     new Set(trackIds).size !== trackIds.length
   ) {
-    throw new Error('Список треков не совпадает с плейлистом');
+    throw new AppError('playlistOrderMismatch');
   }
 
   const db = getDb();

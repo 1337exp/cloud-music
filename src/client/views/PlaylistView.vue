@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { confirm, TaoButton, TaoInput, toast } from '@1337exp/taoui';
 import type { PlaylistDetail, Track } from '@shared/types';
 import { api } from '../http';
+import { t } from '../i18n';
 import { usePlayerStore } from '../stores/player';
 import AddToPlaylistModal from '../components/AddToPlaylistModal.vue';
 import TrackEditModal from '../components/TrackEditModal.vue';
@@ -35,10 +36,10 @@ async function rename() {
       method: 'PATCH',
       body: JSON.stringify({ title: title.value }),
     });
-    toast().success().message('Название сохранено');
+    toast().success().message(t('playlist.renamed'));
     await load();
   } catch (error) {
-    toast().error().message(error instanceof Error ? error.message : 'Не удалось сохранить');
+    toast().danger().message(error instanceof Error ? error.message : t('playlist.saveFailed'));
   }
 }
 
@@ -57,7 +58,7 @@ async function onReorder(tracks: Track[]) {
   } catch (error) {
     playlist.value = { ...playlist.value, tracks: previous, trackCount: previous.length };
     player.applyQueueOrder(previous);
-    toast().error().message(error instanceof Error ? error.message : 'Не удалось сохранить порядок');
+    toast().danger().message(error instanceof Error ? error.message : t('playlist.orderFailed'));
   }
 }
 
@@ -68,17 +69,17 @@ async function onRemove(track: Track) {
 }
 
 async function onDeleted(track: Track) {
-  if (!(await confirm().title('Удалить трек из библиотеки?').message(track.title).danger())) {
+  if (!(await confirm().title(t('playlist.deleteTrackTitle')).message(track.title).danger())) {
     return;
   }
   await api(`/api/tracks/${track.id}`, { method: 'DELETE' });
-  toast().success().message('Трек удалён');
+  toast().success().message(t('library.deleted'));
   await load();
 }
 
 async function destroy() {
   if (!playlist.value) return;
-  if (!(await confirm().title('Удалить плейлист?').message(playlist.value.title).danger())) {
+  if (!(await confirm().title(t('playlists.deleteTitle')).message(playlist.value.title).danger())) {
     return;
   }
   await api(`/api/playlists/${playlist.value.id}`, { method: 'DELETE' });
@@ -91,17 +92,17 @@ async function destroy() {
     <div class="page-head">
       <div class="title-edit">
         <TaoInput v-model="title" @blur="rename" @keydown.enter.prevent="rename" />
-        <p>Треков: {{ playlist.trackCount }}</p>
+        <p>{{ t('playlists.trackCount', { n: playlist.trackCount }) }}</p>
       </div>
-      <TaoButton variant="ghost" tone="danger" @click="destroy">Удалить плейлист</TaoButton>
+      <TaoButton variant="ghost" tone="danger" @click="destroy">{{ t('playlist.deleteAction') }}</TaoButton>
     </div>
 
     <TrackTable
       :tracks="playlist.tracks"
       removable
       reorderable
-      empty-title="Плейлист пуст"
-      empty-text="Добавьте треки из коллекции через меню «⋯»."
+      :empty-title="t('playlist.emptyTitle')"
+      :empty-text="t('playlist.emptyText')"
       @edit="(track) => { editing = track; editOpen = true }"
       @playlist="(track) => { playlistTrack = track; playlistOpen = true }"
       @remove="onRemove"

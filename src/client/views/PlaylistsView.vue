@@ -5,6 +5,7 @@ import { confirm, TaoButton, TaoCard, TaoEmpty, TaoInput, TaoInputGroup, toast }
 import type { PlaylistSummary } from '@shared/types';
 import { MAX_PLAYLISTS_PER_USER } from '@shared/constants';
 import { api } from '../http';
+import { t } from '../i18n';
 
 const router = useRouter();
 const playlists = ref<PlaylistSummary[]>([]);
@@ -26,21 +27,21 @@ async function create() {
       body: JSON.stringify({ title: title.value }),
     });
     title.value = '';
-    toast().success().message('Плейлист создан');
+    toast().success().message(t('playlists.created'));
     await router.push({ name: 'playlist', params: { id: data.playlist.id } });
   } catch (error) {
-    toast().error().message(error instanceof Error ? error.message : 'Не удалось создать');
+    toast().danger().message(error instanceof Error ? error.message : t('playlists.createFailed'));
   } finally {
     creating.value = false;
   }
 }
 
 async function remove(playlist: PlaylistSummary) {
-  if (!(await confirm().title('Удалить плейлист?').message(playlist.title).danger())) {
+  if (!(await confirm().title(t('playlists.deleteTitle')).message(playlist.title).danger())) {
     return;
   }
   await api(`/api/playlists/${playlist.id}`, { method: 'DELETE' });
-  toast().success().message('Удалено');
+  toast().success().message(t('playlists.removed'));
   await load();
 }
 </script>
@@ -49,14 +50,14 @@ async function remove(playlist: PlaylistSummary) {
   <div class="page">
     <div class="page-head">
       <div>
-        <h1>Плейлисты</h1>
+        <h1>{{ t('playlists.title') }}</h1>
         <p>{{ playlists.length }} / {{ MAX_PLAYLISTS_PER_USER }}</p>
       </div>
       <form class="create" @submit.prevent="create">
         <TaoInputGroup>
           <TaoInput
             v-model="title"
-            placeholder="Новый плейлист"
+            :placeholder="t('playlists.newPlaceholder')"
             :disabled="playlists.length >= MAX_PLAYLISTS_PER_USER"
           />
           <template #after>
@@ -65,15 +66,15 @@ async function remove(playlist: PlaylistSummary) {
               :loading="creating"
               :disabled="playlists.length >= MAX_PLAYLISTS_PER_USER"
             >
-              Создать
+              {{ t('playlists.create') }}
             </TaoButton>
           </template>
         </TaoInputGroup>
       </form>
     </div>
 
-    <TaoEmpty v-if="!playlists.length" title="Плейлистов пока нет">
-      Соберите подборку — до {{ MAX_PLAYLISTS_PER_USER }} штук на аккаунт.
+    <TaoEmpty v-if="!playlists.length" :title="t('playlists.emptyTitle')">
+      {{ t('playlists.emptyText', { max: MAX_PLAYLISTS_PER_USER }) }}
     </TaoEmpty>
 
     <div v-else class="grid">
@@ -87,9 +88,9 @@ async function remove(playlist: PlaylistSummary) {
         <div class="card">
           <div>
             <strong>{{ playlist.title }}</strong>
-            <p>Треков: {{ playlist.trackCount }}</p>
+            <p>{{ t('playlists.trackCount', { n: playlist.trackCount }) }}</p>
           </div>
-          <TaoButton variant="ghost" tone="danger" size="small" @click.stop="remove(playlist)">Удалить</TaoButton>
+          <TaoButton variant="ghost" tone="danger" size="small" @click.stop="remove(playlist)">{{ t('playlists.delete') }}</TaoButton>
         </div>
       </TaoCard>
     </div>

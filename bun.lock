@@ -5,7 +5,7 @@
     "": {
       "name": "music-hoster",
       "dependencies": {
-        "@1337exp/taoui": "1.7.0",
+        "@1337exp/taoui": "5.24.0",
         "@fontsource/roboto": "^5.3.0",
         "hono": "^4.9.6",
         "jose": "^6.0.12",
@@ -17,6 +17,7 @@
       "devDependencies": {
         "@types/bun": "latest",
         "@vitejs/plugin-vue": "^5.2.4",
+        "playwright-core": "^1.64.1",
         "typescript": "^5.9.2",
         "vite": "^6.3.5",
         "vite-plugin-pwa": "^1.3.0",
@@ -25,7 +26,7 @@
     },
   },
   "packages": {
-    "@1337exp/taoui": ["@1337exp/taoui@1.7.0", "", { "peerDependencies": { "nuxt": "^3.0.0", "vue": "^3.4.0" }, "optionalPeers": ["nuxt"] }, "sha512-y33mtMm3evTJa9rVen0BhL+gYFw77EQUEIFy6VrlY6a9CfwvxibhFmui3OgUfiWtRIim4myGG+zYn5ZYBbmWzw=="],
+    "@1337exp/taoui": ["@1337exp/taoui@5.24.0", "", { "peerDependencies": { "vue": "^3.4.0" } }, "sha512-nOhoWDrGdbGeZHv43VXocCutSYS021vw65LiZwjEkY/xhOmCiAfpBuC7LUHVXd420o4MJlLK98HMRol4vILneA=="],
 
     "@apideck/better-ajv-errors": ["@apideck/better-ajv-errors@0.3.7", "", { "dependencies": { "jsonpointer": "^5.0.1", "leven": "^3.1.0" }, "peerDependencies": { "ajv": ">=8" } }, "sha512-TajUJwGWbDwkCx/CZi7tRE8PVB7simCvKJfHUsSdvps+aTM/PDPP4gkLmKnc+x3CE//y9i/nj74GqdL/hwk7Iw=="],
 
@@ -708,6 +709,8 @@
     "picomatch": ["picomatch@4.0.7", "", {}, "sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA=="],
 
     "pinia": ["pinia@3.0.4", "", { "dependencies": { "@vue/devtools-api": "^7.7.7" }, "peerDependencies": { "typescript": ">=4.5.0", "vue": "^3.5.11" }, "optionalPeers": ["typescript"] }, "sha512-l7pqLUFTI/+ESXn6k3nu30ZIzW5E2WZF/LaHJEpoq6ElcLD+wduZoB2kBN19du6K/4FDpPMazY2wJr+IndBtQw=="],
+
+    "playwright-core": ["playwright-core@1.64.1", "", { "bin": { "playwright-core": "cli.js" } }, "sha512-BC4s8y6SEVA6Q1rSxZTto8hI1KUI3xXlHGZgvGqP4IqPdI/a6FX9H29IDNz7vKo9l21b6LfYosScPL6M3xxyDQ=="],
 
     "possible-typed-array-names": ["possible-typed-array-names@1.1.0", "", {}, "sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg=="],
 

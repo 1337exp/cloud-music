@@ -2,6 +2,7 @@ import { getDb } from './db';
 import { mapTag, type TagRow, type TrackRow } from './models';
 import { mapTrack } from './models';
 import type { Tag, Track } from '../shared/types';
+import { AppError } from './messages';
 
 export function tagsForTracks(trackIds: number[]): Map<number, Tag[]> {
   const map = new Map<number, Tag[]>();
@@ -62,7 +63,7 @@ export function listTags(): Tag[] {
 export function upsertTag(name: string): Tag {
   const trimmed = name.trim();
   if (!trimmed) {
-    throw new Error('Имя тега пустое');
+    throw new AppError('tagEmpty');
   }
 
   const db = getDb();

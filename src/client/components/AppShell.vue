@@ -2,8 +2,9 @@
 import { computed, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { TaoButton, TaoLink, TaoTag } from '@1337exp/taoui';
-import { roleLabel } from '@shared/roles';
+import { t } from '../i18n';
 import { useAuthStore } from '../stores/auth';
+import LangSwitch from './LangSwitch.vue';
 import PlayerBar from './PlayerBar.vue';
 
 const auth = useAuthStore();
@@ -13,12 +14,12 @@ const moreOpen = ref(false);
 
 const links = computed(() => {
   const items = [
-    { name: 'library', to: { name: 'library' }, label: 'Коллекция' },
-    { name: 'playlists', to: { name: 'playlists' }, label: 'Плейлисты' },
-    { name: 'history', to: { name: 'history' }, label: 'История' },
+    { name: 'library', to: { name: 'library' }, label: t('nav.library') },
+    { name: 'playlists', to: { name: 'playlists' }, label: t('nav.playlists') },
+    { name: 'history', to: { name: 'history' }, label: t('nav.history') },
   ];
   if (auth.isEditor) {
-    items.push({ name: 'upload', to: { name: 'upload' }, label: 'Загрузка' });
+    items.push({ name: 'upload', to: { name: 'upload' }, label: t('nav.upload') });
   }
   return items;
 });
@@ -49,13 +50,13 @@ async function logout() {
     <aside class="sidebar">
       <div class="brand">
         <span class="brand-mark" aria-hidden="true"></span>
-        <span>Музыка</span>
+        <span>{{ t('app.brand') }}</span>
       </div>
 
       <nav class="nav">
         <TaoLink
           v-for="link in links"
-          :key="link.label"
+          :key="link.name"
           class="nav-link"
           :class="{ 'nav-link--active': isActive(link.name) }"
           :to="link.to"
@@ -67,9 +68,12 @@ async function logout() {
       <div v-if="auth.user" class="account">
         <div>
           <strong>{{ auth.user.username }}</strong>
-          <TaoTag type="neutral">{{ roleLabel(auth.user.role) }}</TaoTag>
+          <TaoTag tone="neutral">{{ t(`role.${auth.user.role}`) }}</TaoTag>
         </div>
-        <TaoButton variant="ghost" size="small" @click="logout">Выйти</TaoButton>
+        <div class="account-actions">
+          <LangSwitch />
+          <TaoButton variant="ghost" size="small" @click="logout">{{ t('nav.logout') }}</TaoButton>
+        </div>
       </div>
     </aside>
 
@@ -79,10 +83,10 @@ async function logout() {
 
     <PlayerBar />
 
-    <nav class="dock" aria-label="Разделы">
+    <nav class="dock" :aria-label="t('nav.sections')">
       <TaoLink
         v-for="link in links"
-        :key="link.label"
+        :key="link.name"
         class="dock-link"
         :class="{ 'dock-link--active': isActive(link.name) }"
         :to="link.to"
@@ -90,15 +94,16 @@ async function logout() {
         {{ link.label }}
       </TaoLink>
       <button type="button" class="dock-link" :class="{ 'dock-link--active': moreOpen }" @click="moreOpen = !moreOpen">
-        Ещё
+        {{ t('nav.more') }}
       </button>
     </nav>
 
     <div v-if="moreOpen" class="sheet" @click.self="moreOpen = false">
       <div class="sheet-card" v-if="auth.user">
         <strong>{{ auth.user.username }}</strong>
-        <TaoTag type="neutral">{{ roleLabel(auth.user.role) }}</TaoTag>
-        <TaoButton variant="ghost" size="small" @click="logout">Выйти</TaoButton>
+        <TaoTag tone="neutral">{{ t(`role.${auth.user.role}`) }}</TaoTag>
+        <LangSwitch />
+        <TaoButton variant="ghost" size="small" @click="logout">{{ t('nav.logout') }}</TaoButton>
       </div>
     </div>
   </div>
@@ -150,7 +155,7 @@ async function logout() {
 
 .nav-link {
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--tao-radius-md);
   color: var(--tao-color-text-muted);
   text-decoration: none;
   font-size: 14px;
@@ -173,8 +178,15 @@ async function logout() {
   flex-direction: column;
   gap: 10px;
   padding: 12px;
-  border-radius: 12px;
+  border-radius: var(--tao-radius-lg);
   background: var(--tao-color-surface-raised);
+}
+
+.account-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .account strong {
@@ -259,7 +271,7 @@ async function logout() {
     align-items: center;
     gap: 10px 12px;
     padding: 16px;
-    border-radius: 16px;
+    border-radius: var(--tao-radius-panel);
     background: var(--tao-color-surface-raised);
   }
 

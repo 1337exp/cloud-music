@@ -4,10 +4,12 @@ import { confirm, TaoInput, TaoPagination, TaoSelect, TaoTag, toast } from '@133
 import type { Tag, Track, TrackListResponse, TrackSortKey } from '@shared/types';
 import { DEFAULT_PAGE_SIZE } from '@shared/constants';
 import { api } from '../http';
+import { t } from '../i18n';
 import { useAuthStore } from '../stores/auth';
 import AddToPlaylistModal from '../components/AddToPlaylistModal.vue';
 import TrackEditModal from '../components/TrackEditModal.vue';
 import TrackTable from '../components/TrackTable.vue';
+import type { CollectionQuery } from '../stores/player';
 
 const auth = useAuthStore();
 const tracks = ref<Track[]>([]);
@@ -24,46 +26,40 @@ const playlistTrack = ref<Track | null>(null);
 const editOpen = ref(false);
 const playlistOpen = ref(false);
 
-const sortOptions = [
-  { value: 'createdAt', label: 'Сначала новые' },
-  { value: 'title', label: 'Название' },
-  { value: 'artist', label: 'Исполнитель' },
-  { value: 'album', label: 'Альбом' },
-  { value: 'duration', label: 'Длительность' },
-];
+const sortOptions = computed(() => [
+  { value: 'createdAt', label: t('library.sortNewest') },
+  { value: 'title', label: t('library.sortTitle') },
+  { value: 'artist', label: t('library.sortArtist') },
+  { value: 'album', label: t('library.sortAlbum') },
+  { value: 'duration', label: t('library.sortDuration') },
+]);
+
+// What the list on screen was loaded with (the search box runs ahead of it while the debounce waits).
+const shownQuery = ref<CollectionQuery>({ q: '', tag: '', sort: 'createdAt', dir: 'desc' });
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 
 const emptyText = computed(() => {
-  if (query.value || tag.value) return 'Попробуйте другой запрос или снимите тег.';
-  if (auth.isEditor) return 'Загрузите файлы в разделе «Загрузка» или прогоните индексацию.';
-  return 'Попросите редактора добавить музыку.';
+  if (query.value || tag.value) return t('library.emptyFiltered');
+  if (auth.isEditor) return t('library.emptyEditor');
+  return t('library.emptyListener');
 });
-
-function trackCountLabel(n: number): string {
-  const n10 = n % 10;
-  const n100 = n % 100;
-  if (n10 === 1 && n100 !== 11) return `${n} трек`;
-  if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) return `${n} трека`;
-  return `${n} треков`;
-}
 
 async function load() {
   loading.value = true;
   try {
+    const requested: CollectionQuery = { q: query.value, tag: tag.value, sort: sort.value, dir: dir.value };
     const params = new URLSearchParams({
-      q: query.value,
-      tag: tag.value,
-      sort: sort.value,
-      dir: dir.value,
+      ...requested,
       page: String(page.value),
       pageSize: String(DEFAULT_PAGE_SIZE),
     });
     const data = await api<TrackListResponse>(`/api/tracks?${params}`);
     tracks.value = data.items;
     total.value = data.total;
+    shownQuery.value = requested;
   } catch (error) {
-    toast().error().message(error instanceof Error ? error.message : 'Не удалось загрузить треки');
+    toast().danger().message(error instanceof Error ? error.message : t('library.loadFailed'));
   } finally {
     loading.value = false;
   }
@@ -76,7 +72,6 @@ async function loadTags() {
 
 function toggleTag(name: string) {
   tag.value = tag.value === name ? '' : name;
-  page.value = 1;
 }
 
 onMounted(() => {
@@ -84,7 +79,13 @@ onMounted(() => {
   void loadTags();
 });
 
-watch([page, sort, dir, tag], () => void load());
+watch(page, () => void load());
+
+// A new sort or tag starts from the first page; if it already is the first, the page watcher stays silent.
+watch([sort, dir, tag], () => {
+  if (page.value === 1) void load();
+  else page.value = 1;
+});
 
 watch(query, () => {
   if (timer) clearTimeout(timer);
@@ -110,11 +111,11 @@ function onSaved(track: Track) {
 }
 
 async function onDeleted(track: Track) {
-  if (!(await confirm().title('Удалить трек?').message(track.title).danger())) {
+  if (!(await confirm().title(t('library.deleteTitle')).message(track.title).danger())) {
     return;
   }
   await api(`/api/tracks/${track.id}`, { method: 'DELETE' });
-  toast().success().message('Трек удалён');
+  toast().success().message(t('library.deleted'));
   void load();
   void loadTags();
 }
@@ -124,11 +125,11 @@ async function onDeleted(track: Track) {
   <div class="page">
     <div class="page-head">
       <div>
-        <h1>Коллекция</h1>
-        <p>{{ trackCountLabel(total) }}</p>
+        <h1>{{ t('library.title') }}</h1>
+        <p>{{ t('library.count', { n: total }) }}</p>
       </div>
       <div class="tools">
-        <TaoInput v-model="query" placeholder="Поиск по названию, исполнителю, тегу">
+        <TaoInput v-model="query" :placeholder="t('library.search')">
           <template #prefix>⌕</template>
         </TaoInput>
         <TaoSelect v-model="sort" :options="sortOptions" />
@@ -139,8 +140,8 @@ async function onDeleted(track: Track) {
       <TaoTag
         v-for="item in tags"
         :key="item.id"
-        :type="tag === item.name ? 'warning' : 'neutral'"
-        pointer
+        :tone="tag === item.name ? 'warning' : 'neutral'"
+        clickable
         @click="toggleTag(item.name)"
       >
         {{ item.name }}
@@ -149,7 +150,8 @@ async function onDeleted(track: Track) {
 
     <TrackTable
       :tracks="tracks"
-      empty-title="Ничего не нашлось"
+      :collection="shownQuery"
+      :empty-title="t('library.emptyTitle')"
       :empty-text="emptyText"
       @edit="onEdit"
       @playlist="onPlaylist"

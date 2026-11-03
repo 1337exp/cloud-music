@@ -1,7 +1,7 @@
 import { unlink } from 'node:fs/promises';
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MAX_UPLOAD_BYTES } from '../shared/constants';
-import type { TrackListResponse, TrackSortKey, UploadResult } from '../shared/types';
+import type { TrackIdsResponse, TrackListResponse, TrackSortKey, UploadResult } from '../shared/types';
 import {
   authenticate,
   clearSessionCookie,
@@ -25,6 +25,7 @@ import {
   renamePlaylist,
   reorderPlaylistTracks,
 } from './playlists';
+import { errorText, fail, requestLang, tr } from './messages';
 import { audioResponse, coverResponse } from './stream';
 import { getTrackById, getTrackRowById, hydrateTracks, listTags, syncTrackTags } from './tracks';
 
@@ -38,12 +39,12 @@ api.post('/auth/login', async (c) => {
   const password = String(body?.password ?? '');
 
   if (!username || !password) {
-    return c.json({ error: 'invalid', message: 'Введите логин и пароль' }, 400);
+    return fail(c, 400, 'invalid', 'credentialsRequired');
   }
 
   const user = await authenticate(username, password);
   if (!user) {
-    return c.json({ error: 'invalid', message: 'Неверный логин или пароль' }, 401);
+    return fail(c, 401, 'invalid', 'badCredentials');
   }
 
   const token = await signSession(user);
@@ -69,20 +70,12 @@ const SORT_COLUMNS: Record<TrackSortKey, string> = {
   duration: 't.duration_ms',
 };
 
-authed.get('/tracks', (c) => {
+/** The WHERE part of a collection query (search and tag), shared by the page list and the id list. */
+function trackFilter(c: Context): { whereSql: string; params: string[] } {
   const q = (c.req.query('q') ?? '').trim();
   const tag = (c.req.query('tag') ?? '').trim();
-  const sortRaw = (c.req.query('sort') ?? 'createdAt') as TrackSortKey;
-  const dir = c.req.query('dir') === 'asc' ? 'ASC' : 'DESC';
-  const page = Math.max(1, Number(c.req.query('page') ?? 1) || 1);
-  const pageSize = Math.min(
-    MAX_PAGE_SIZE,
-    Math.max(1, Number(c.req.query('pageSize') ?? DEFAULT_PAGE_SIZE) || DEFAULT_PAGE_SIZE),
-  );
-  const order = SORT_COLUMNS[sortRaw] ?? SORT_COLUMNS.createdAt;
-
   const where: string[] = [];
-  const params: Array<string | number> = [];
+  const params: string[] = [];
 
   if (q) {
     const like = `%${q}%`;
@@ -105,16 +98,27 @@ authed.get('/tracks', (c) => {
     params.push(tag);
   }
 
-  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  return { whereSql: where.length ? `WHERE ${where.join(' AND ')}` : '', params };
+}
+
+function trackOrder(c: Context): string {
+  const sort = (c.req.query('sort') ?? 'createdAt') as TrackSortKey;
+  const dir = c.req.query('dir') === 'asc' ? 'ASC' : 'DESC';
+  return `ORDER BY ${SORT_COLUMNS[sort] ?? SORT_COLUMNS.createdAt} ${dir}, t.id DESC`;
+}
+
+authed.get('/tracks', (c) => {
+  const page = Math.max(1, Number(c.req.query('page') ?? 1) || 1);
+  const pageSize = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(1, Number(c.req.query('pageSize') ?? DEFAULT_PAGE_SIZE) || DEFAULT_PAGE_SIZE),
+  );
+  const { whereSql, params } = trackFilter(c);
   const db = getDb();
   const total = (db.query(`SELECT COUNT(*) as n FROM tracks t ${whereSql}`).get(...params) as { n: number }).n;
 
   const rows = db
-    .query(
-      `SELECT t.* FROM tracks t ${whereSql}
-       ORDER BY ${order} ${dir}, t.id DESC
-       LIMIT ? OFFSET ?`,
-    )
+    .query(`SELECT t.* FROM tracks t ${whereSql} ${trackOrder(c)} LIMIT ? OFFSET ?`)
     .all(...params, pageSize, (page - 1) * pageSize) as TrackRow[];
 
   const payload: TrackListResponse = {
@@ -127,10 +131,20 @@ authed.get('/tracks', (c) => {
   return c.json(payload);
 });
 
+/** Ids of the whole collection in list order: the player queue does not depend on which page is open. */
+authed.get('/tracks/ids', (c) => {
+  const { whereSql, params } = trackFilter(c);
+  const rows = getDb()
+    .query(`SELECT t.id as id FROM tracks t ${whereSql} ${trackOrder(c)}`)
+    .all(...params) as Array<{ id: number }>;
+  const payload: TrackIdsResponse = { ids: rows.map((row) => row.id) };
+  return c.json(payload);
+});
+
 authed.get('/tracks/:id', (c) => {
   const track = getTrackById(Number(c.req.param('id')));
   if (!track) {
-    return c.json({ error: 'not_found', message: 'Трек не найден' }, 404);
+    return fail(c, 404, 'not_found', 'trackNotFound');
   }
   return c.json({ track });
 });
@@ -138,7 +152,7 @@ authed.get('/tracks/:id', (c) => {
 authed.get('/tracks/:id/audio', (c) => {
   const row = getTrackRowById(Number(c.req.param('id')));
   if (!row) {
-    return c.json({ error: 'not_found', message: 'Трек не найден' }, 404);
+    return fail(c, 404, 'not_found', 'trackNotFound');
   }
   return audioResponse(row, c.req.header('Range'));
 });
@@ -146,7 +160,7 @@ authed.get('/tracks/:id/audio', (c) => {
 authed.get('/tracks/:id/cover', (c) => {
   const row = getTrackRowById(Number(c.req.param('id')));
   if (!row) {
-    return c.json({ error: 'not_found', message: 'Трек не найден' }, 404);
+    return fail(c, 404, 'not_found', 'trackNotFound');
   }
   return coverResponse(row);
 });
@@ -155,7 +169,7 @@ authed.patch('/tracks/:id', requireEditor, async (c) => {
   const id = Number(c.req.param('id'));
   const existing = getTrackRowById(id);
   if (!existing) {
-    return c.json({ error: 'not_found', message: 'Трек не найден' }, 404);
+    return fail(c, 404, 'not_found', 'trackNotFound');
   }
 
   const body = await c.req.json().catch(() => null);
@@ -170,7 +184,7 @@ authed.patch('/tracks/:id', requireEditor, async (c) => {
         : existing.year;
 
   if (!title) {
-    return c.json({ error: 'invalid', message: 'Название не может быть пустым' }, 400);
+    return fail(c, 400, 'invalid', 'titleEmpty');
   }
 
   getDb().run(
@@ -192,7 +206,7 @@ authed.delete('/tracks/:id', requireEditor, async (c) => {
   const id = Number(c.req.param('id'));
   const row = getTrackRowById(id);
   if (!row) {
-    return c.json({ error: 'not_found', message: 'Трек не найден' }, 404);
+    return fail(c, 404, 'not_found', 'trackNotFound');
   }
 
   await deleteTrackFiles(row.file_path, row.file_hash);
@@ -208,21 +222,22 @@ authed.post('/tracks/upload', requireEditor, async (c) => {
   );
 
   if (!files.length) {
-    return c.json({ error: 'invalid', message: 'Нет файлов для загрузки' }, 400);
+    return fail(c, 400, 'invalid', 'noFiles');
   }
 
+  const lang = requestLang(c);
   const result: UploadResult = { added: [], duplicates: [], failed: [] };
 
   for (const file of files) {
     try {
       if (file.size > MAX_UPLOAD_BYTES) {
-        result.failed.push({ fileName: file.name, message: 'Файл слишком большой' });
+        result.failed.push({ fileName: file.name, message: tr(lang, 'fileTooLarge') });
         continue;
       }
 
       const target = await uniqueLibraryPath(file.name);
       if (!isAudioFile(target)) {
-        result.failed.push({ fileName: file.name, message: 'Неподдерживаемый формат' });
+        result.failed.push({ fileName: file.name, message: tr(lang, 'unsupportedFormat') });
         continue;
       }
 
@@ -244,7 +259,7 @@ authed.post('/tracks/upload', requireEditor, async (c) => {
     } catch (error) {
       result.failed.push({
         fileName: file.name,
-        message: error instanceof Error ? error.message : 'Не удалось обработать файл',
+        message: errorText(c, error, 'processFailed'),
       });
     }
   }
@@ -263,7 +278,7 @@ authed.post('/playlists', async (c) => {
     return c.json({ playlist }, 201);
   } catch (error) {
     return c.json(
-      { error: 'invalid', message: error instanceof Error ? error.message : 'Не удалось создать' },
+      { error: 'invalid', message: errorText(c, error, 'createFailed') },
       400,
     );
   }
@@ -272,7 +287,7 @@ authed.post('/playlists', async (c) => {
 authed.get('/playlists/:id', (c) => {
   const playlist = getPlaylistDetail(c.get('user').id, Number(c.req.param('id')));
   if (!playlist) {
-    return c.json({ error: 'not_found', message: 'Плейлист не найден' }, 404);
+    return fail(c, 404, 'not_found', 'playlistNotFound');
   }
   return c.json({ playlist });
 });
@@ -282,12 +297,12 @@ authed.patch('/playlists/:id', async (c) => {
   try {
     const playlist = renamePlaylist(c.get('user').id, Number(c.req.param('id')), String(body?.title ?? ''));
     if (!playlist) {
-      return c.json({ error: 'not_found', message: 'Плейлист не найден' }, 404);
+      return fail(c, 404, 'not_found', 'playlistNotFound');
     }
     return c.json({ playlist });
   } catch (error) {
     return c.json(
-      { error: 'invalid', message: error instanceof Error ? error.message : 'Не удалось сохранить' },
+      { error: 'invalid', message: errorText(c, error, 'saveFailed') },
       400,
     );
   }
@@ -296,7 +311,7 @@ authed.patch('/playlists/:id', async (c) => {
 authed.delete('/playlists/:id', (c) => {
   const ok = deletePlaylist(c.get('user').id, Number(c.req.param('id')));
   if (!ok) {
-    return c.json({ error: 'not_found', message: 'Плейлист не найден' }, 404);
+    return fail(c, 404, 'not_found', 'playlistNotFound');
   }
   return c.json({ ok: true });
 });
@@ -305,18 +320,18 @@ authed.post('/playlists/:id/tracks', async (c) => {
   const body = await c.req.json().catch(() => null);
   const trackId = Number(body?.trackId);
   if (!trackId) {
-    return c.json({ error: 'invalid', message: 'Не указан трек' }, 400);
+    return fail(c, 400, 'invalid', 'trackMissing');
   }
 
   try {
     const ok = addTrackToPlaylist(c.get('user').id, Number(c.req.param('id')), trackId);
     if (!ok) {
-      return c.json({ error: 'not_found', message: 'Плейлист не найден' }, 404);
+      return fail(c, 404, 'not_found', 'playlistNotFound');
     }
     return c.json({ ok: true });
   } catch (error) {
     return c.json(
-      { error: 'invalid', message: error instanceof Error ? error.message : 'Не удалось добавить' },
+      { error: 'invalid', message: errorText(c, error, 'addFailed') },
       400,
     );
   }
@@ -326,18 +341,18 @@ authed.put('/playlists/:id/tracks/order', async (c) => {
   const body = await c.req.json().catch(() => null);
   const trackIds = Array.isArray(body?.trackIds) ? body.trackIds.map((id: unknown) => Number(id)) : [];
   if (!trackIds.length || trackIds.some((id: number) => !id)) {
-    return c.json({ error: 'invalid', message: 'Некорректный порядок' }, 400);
+    return fail(c, 400, 'invalid', 'badOrder');
   }
 
   try {
     const playlist = reorderPlaylistTracks(c.get('user').id, Number(c.req.param('id')), trackIds);
     if (!playlist) {
-      return c.json({ error: 'not_found', message: 'Плейлист не найден' }, 404);
+      return fail(c, 404, 'not_found', 'playlistNotFound');
     }
     return c.json({ playlist });
   } catch (error) {
     return c.json(
-      { error: 'invalid', message: error instanceof Error ? error.message : 'Не удалось сохранить порядок' },
+      { error: 'invalid', message: errorText(c, error, 'orderFailed') },
       400,
     );
   }
@@ -350,7 +365,7 @@ authed.delete('/playlists/:id/tracks/:trackId', (c) => {
     Number(c.req.param('trackId')),
   );
   if (!ok) {
-    return c.json({ error: 'not_found', message: 'Плейлист не найден' }, 404);
+    return fail(c, 404, 'not_found', 'playlistNotFound');
   }
   return c.json({ ok: true });
 });
@@ -362,7 +377,7 @@ authed.post('/history', async (c) => {
   const trackId = Number(body?.trackId);
   const track = getTrackById(trackId);
   if (!track) {
-    return c.json({ error: 'not_found', message: 'Трек не найден' }, 404);
+    return fail(c, 404, 'not_found', 'trackNotFound');
   }
   recordPlay(c.get('user').id, trackId);
   return c.json({ ok: true });

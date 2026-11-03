@@ -1,20 +1,28 @@
-# Облако Музыки
+# Cloud Music
 
-Локальный музыкальный сервер: **Vue 3 + TypeScript** на клиенте, **Bun + TypeScript** на сервере, **SQLite** и **JWT**.
+<p align="center">
+  <img src="docs/media/library-en.png" alt="The library: a track list with covers, tags and durations, the sidebar and the player bar" width="560">
+  <img src="docs/media/mobile-en.png" alt="The phone layout: the library with bottom tabs and the compact player" width="170">
+</p>
 
-Интерфейс собран на [TaoUI](https://github.com/1337exp/taoui). Репозиторий проекта: [1337exp/cloud-music](https://github.com/1337exp/cloud-music).
+**English** · [Русский](README.ru.md)
+
+A local music server: **Vue 3 + TypeScript** on the client, **Bun + TypeScript** on the server, **SQLite** and **JWT**.
+The interface speaks English and Russian (a switch in the sidebar and on the sign-in page).
+
+Built with [TaoUI](https://github.com/1337exp/taoui) 5. Repository: [1337exp/cloud-music](https://github.com/1337exp/cloud-music).
 
 ```
 src/
-  client/    Vue-приложение
+  client/    Vue app
   server/    Bun HTTP API
-  shared/    общие типы и константы
-  tools/     создание пользователя, индексация
+  shared/    shared types and constants
+  tools/     user creation, indexing, demo data
 ```
 
-Живой список «что уже умеет / чего ещё нет» — в [FEATURES.md](FEATURES.md).
+A living list of what it can do and what it cannot yet: [FEATURES.md](FEATURES.md) (in Russian).
 
-## Запуск
+## Run
 
 ```bash
 bun install
@@ -22,50 +30,68 @@ bun run user:create admin password admin
 bun run dev
 ```
 
-Клиент: http://127.0.0.1:5173  
+Client: http://127.0.0.1:5173  
 API: http://127.0.0.1:8787
 
-Прод (после сборки клиент отдаёт сам Bun):
+Production (after a build the client is served by Bun itself):
 
 ```bash
 bun run build
 bun run start
 ```
 
-## Аккаунты
+## Playback
 
-Публичной регистрации нет. Пользователя создаёт админ скриптом:
+The player plays the **whole collection**, not the page you happen to have open. Click a track in the library and the queue is
+every track of that list (same search, tag and sort), so when the last track of page 1 ends, the first of page 2 starts.
+Paging the list is up to you; the player never turns pages. Playlists and the history play as they are listed.
+
+- **Next / Previous** always move along the queue, whatever the repeat mode. Previous restarts the track if it is more than 3 seconds in.
+- **Repeat**: off (stops at the end of the queue) / all (wraps around) / one (replays a track that ends by itself).
+- **Shuffle** plays every track once, in a random order, then reshuffles if repeat is on.
+- A file that is missing or broken is skipped; after five failures in a row the player stops.
+- Keys: Space plays and pauses, ← / → seek 5 seconds. Headset and OS media keys work through the Media Session API.
+
+## Language
+
+The first visit follows the browser language (Russian if it starts with `ru`, English otherwise); the switch remembers the choice in the browser.
+TaoUI's own texts (upload zone, pagination and the like) follow it, and so do the server's error messages: the client sends the language in an `X-Lang` header.
+New texts live in `src/client/i18n.ts` (the interface) and `src/server/messages.ts` (API errors); add a language by adding a column to both.
+
+## Accounts
+
+There is no public sign-up. An admin creates users with a script:
 
 ```bash
-bun run user:create <логин> <пароль> <роль>
+bun run user:create <username> <password> <role>
 bun run user:create lazy secret editor --force
 ```
 
-Роли:
+Roles:
 
-- `listener` — слушает, ищет, плейлисты, история
-- `editor` — то же + загрузка, удаление, правки названий и тегов
-- `admin` — все права редактора
+- `listener`: listens, searches, playlists, history
+- `editor`: the same plus upload, delete, editing titles and tags
+- `admin`: everything an editor can do
 
-## Хранение
+## Storage
 
-Одна SQLite на всё: пользователи, плейлисты, история и индекс треков. Отдельная «база музыки» почти ничего не даёт — плейлисты и история всё равно ссылаются на id трека.
+One SQLite file holds everything: users, playlists, history and the track index. A separate "music database" would buy almost nothing, since playlists and history point at track ids anyway.
 
-Другой диск или сетевая папка — это не вторая БД, а ещё один путь в `musicDirs`. Индекс и аккаунты живут в `dataDir` (системный диск), файлы — где удобно.
+Another disk or a network folder is not a second database but one more path in `musicDirs`. The index and the accounts live in `dataDir` (the system disk), the files live wherever you like.
 
-### Как добавить папку с музыкой
+### Adding a music folder
 
-Пути задаются в `server.config.json` в корне проекта.
+Paths are set in `server.config.json` in the project root.
 
-1. Откройте файл и допишите каталог в `musicDirs`. На Windows удобнее прямые слэши: `E:/Music`, не `E:\Music`.
-2. Перезапустите сервер (`bun run dev` или `bun run start`) — конфиг читается при старте.
-3. Если в папке уже лежат файлы, прогоните индекс:
+1. Open the file and add a directory to `musicDirs`. On Windows forward slashes are easier: `E:/Music`, not `E:\Music`.
+2. Restart the server (`bun run dev` or `bun run start`): the config is read at start.
+3. If the folder already has files, run the indexer:
 
 ```bash
 bun run reindex
 ```
 
-Пример с локальной папкой, вторым диском и сетевой шарой:
+An example with a local folder, a second disk and a network share:
 
 ```json
 {
@@ -77,7 +103,7 @@ bun run reindex
 }
 ```
 
-Загрузка из UI кладёт файлы в **первую** папку из `musicDirs`. Если загрузки должны идти в одно место, а слушать нужно ещё и с диска — задайте `uploadDir` отдельно:
+Uploads from the UI go into the **first** folder of `musicDirs`. If uploads should land in one place while you also listen to a disk, set `uploadDir` separately:
 
 ```json
 {
@@ -86,38 +112,51 @@ bun run reindex
 }
 ```
 
-Если шара не смонтирована, сервер всё равно стартует и просто пропускает эту папку.
+If a share is not mounted the server still starts and just skips that folder.
 
-Имя файла базы — поле `database` (по умолчанию `music.db` внутри `dataDir`). Можно указать полный путь, если SQLite должна жить не рядом с обложками.
+The database file name is the `database` field (`music.db` inside `dataDir` by default). Give a full path if SQLite should live away from the covers.
 
-Переменные из `.env.example` перекрывают этот файл, если заданы. `MUSIC_DIR` в окружении задаёт **один** корень вместо всего списка `musicDirs`.
+Variables from `.env.example` override this file when set. `MUSIC_DIR` in the environment sets **one** root instead of the whole `musicDirs` list.
 
-## Библиотека
+## Library
 
-Загрузка файлов — у редактора и админа, раздел «Загрузка».
+Uploading is for editors and admins, in the "Upload" section.
 
-Если база повреждена, файлы на диске можно снова прописать в SQLite:
+If the database is damaged, the files on disk can be written into SQLite again:
 
 ```bash
 bun run reindex
 bun run reindex --prune
 ```
 
-`--prune` удаляет из базы записи, для которых файла уже нет.
+`--prune` removes records whose file is gone.
 
-## Телефон и PWA
+## Phone and PWA
 
-Один клиент на все экраны: на узком окне сайдбар становится нижними вкладками, плеер — полоской. Тап по названию трека в плеере открывает перемотку, повтор, перемешивание и громкость.
+One client for every screen: on a narrow window the sidebar becomes bottom tabs and the player becomes a strip. A tap on the track name opens seek, repeat, shuffle and volume.
 
-После `bun run build` и `bun run start` сайт можно повесить на домашний экран (Chrome: «Установить приложение», iOS: «На экран Домой»). В кеше лежит оболочка — интерфейс откроется быстрее. Треки по-прежнему стримятся с сервера, офлайн-библиотеки нет.
+After `bun run build` and `bun run start` the site can go on the home screen (Chrome: "Install app", iOS: "Add to Home Screen"). The shell is cached, so the interface opens faster. Tracks are still streamed from the server; there is no offline library.
 
-С телефона заходите по адресу компьютера в домашней сети, например `http://192.168.0.183:8787` (прод) или `:5173` в режиме `bun run dev`.
+From a phone, open your computer's address on the home network, for example `http://192.168.0.183:8787` (production) or `:5173` under `bun run dev`.
 
-## Остальное
+## Demo data and screenshots
 
-- Поиск по названию, исполнителю, альбому и тегам
-- Теги (жанр и любые пометки) и выборка по ним
-- До 100 плейлистов на пользователя
-- История: последние 50 треков; повтор того же id подряд не пишется
+A throwaway library with made-up tracks, playlists and a history, for trying the player or taking screenshots. Both variables are required so the real library is never touched:
 
-Переменные окружения — в `.env.example`, основной конфиг — `server.config.json`. JWT-секрет при первом запуске пишется в `data/.jwt-secret`, если не задан `JWT_SECRET`.
+```bash
+DATA_DIR=./demo/data MUSIC_DIR=./demo/music bun run demo
+```
+
+The script prints the demo login and a random password. To start the server on it, run it with the same two variables.
+
+`bun run screenshot` does all of that on its own in a temporary folder and writes `docs/media/{library,playlist,mobile}-{en,ru}.png`.
+It needs Bun and Chrome or Edge (driven through `playwright-core`, nothing is downloaded).
+
+## More
+
+- Search by title, artist, album and tags
+- Tags (genre and any labels) and filtering by them
+- Up to 100 playlists per user, drag to reorder
+- History: the last 50 tracks; the same id twice in a row is not recorded
+
+Environment variables are in `.env.example`, the main config is `server.config.json`. The JWT secret is written to `data/.jwt-secret` on first start unless `JWT_SECRET` is set.
